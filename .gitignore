@@ -1,0 +1,50 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependency & package manager artifacts
+node_modules
+.pnp*/
+.pnpm-store/
+
+# Build outputs & tooling caches
+dist
+dist-ssr
+.vite/
+.vite-inspect/
+*.local
+*.tsbuildinfo
+temp/
+
+# Coverage
+coverage/
+*.lcov
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Editor & OS cruft
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.ait
+*.iml
+*.code-workspace
+
+# Granite workspace metadata
+.granite
+
