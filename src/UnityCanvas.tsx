@@ -127,9 +127,9 @@ const UnityCanvas = () => {
       container.appendChild(canvas);
 
       const unityConfig = {
-        dataUrl: `${UNITY_BUILD_PATH}/${GAME_NAME}.data.unityweb`,
-        frameworkUrl: `${UNITY_BUILD_PATH}/${GAME_NAME}.framework.js.unityweb`,
-        codeUrl: `${UNITY_BUILD_PATH}/${GAME_NAME}.wasm.unityweb`,
+        dataUrl: `${UNITY_BUILD_PATH}/${GAME_NAME}.data`,
+        frameworkUrl: `${UNITY_BUILD_PATH}/${GAME_NAME}.framework.js`,
+        codeUrl: `${UNITY_BUILD_PATH}/${GAME_NAME}.wasm`,
         streamingAssetsUrl: '/unity/StreamingAssets',
         ...UNITY_SETTINGS,
       };
