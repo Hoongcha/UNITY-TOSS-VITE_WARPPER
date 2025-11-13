@@ -63,7 +63,7 @@ export default defineConfig({
 
 
 ### `UnityCanvas.tsx` 설정
-먼저 Property를 수정해야 해요. <br>
+1. 먼저 Property를 수정해야 해요. <br>
 ```Typescript
 
 const UNITY_BUILD_PATH = '/unity/Build';
@@ -75,7 +75,7 @@ const UNITY_SETTINGS = {
   productVersion: '1.0.0',
 };
 ```
-해당 Warpper는 프로그래스바를 포함해요.
+2. 해당 Warpper는 프로그래스바를 포함해요. <br>
 맨마지막 부분을 잘 봐주세요.
 ```Typescript
 ...
@@ -89,7 +89,20 @@ return (
 ...
 );
 ```
-해당 부분 src를 게임 로고 URL로 바꾸주세요.
+해당 부분 src를 게임 로고 URL로 바꿔주세요. <br> <br>
+
+3. ⚠️ 빌드하고 난 이후 빌드본에서 Build/에서 확장자를 확인해주세요.
+```Typescript
+const unityConfig = {
+    dataUrl: `${UNITY_BUILD_PATH}/${GAME_NAME}.data`,
+    frameworkUrl: `${UNITY_BUILD_PATH}/${GAME_NAME}.framework.js`,
+    codeUrl: `${UNITY_BUILD_PATH}/${GAME_NAME}.wasm`,
+    streamingAssetsUrl: '/unity/StreamingAssets',
+    ...UNITY_SETTINGS,
+  };
+```
+위 코드와 확장자가 맞지 않으시다면 수정해주세요!!!!<br>
+
 
 ## 3. 개발 서버 실행
 
