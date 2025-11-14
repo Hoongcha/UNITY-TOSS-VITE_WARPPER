@@ -17,7 +17,8 @@ export default defineConfig({
     },
   },
   webViewProps: {
-    type: 'game'
+    type: 'game',
+    mediaPlaybackRequiresUserAction: false 
   },
   permissions: [],
   outdir: 'dist',

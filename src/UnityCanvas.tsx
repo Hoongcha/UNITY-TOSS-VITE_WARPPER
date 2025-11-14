@@ -1,4 +1,4 @@
-import { useEffect, useState  } from 'react';
+import { useEffect, useState,useRef   } from 'react';
 import { isMinVersionSupported, openGameCenterLeaderboard, submitGameCenterLeaderBoardScore} from '@apps-in-toss/web-framework';
 import { getUserKeyForGame } from '@apps-in-toss/web-framework';
 import { Storage } from '@apps-in-toss/web-framework';
@@ -27,10 +27,14 @@ declare global {
 }
 
 const UnityCanvas = () => {
+  const isMounted = useRef(false);
   // 로딩 진행 상태
   const [loadingProgress, setLoadingProgress] = useState(0);
   
   useEffect(() => {
+    // 중복 마운트 방지
+    if (isMounted.current) return;
+    isMounted.current = true;
 
     // 로그인 혹은 키값 얻기
     window.TossGetUserKeyForGame = async () => {
