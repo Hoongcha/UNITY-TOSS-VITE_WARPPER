@@ -1,7 +1,12 @@
-import { useEffect, useState,useRef   } from 'react';
-import { isMinVersionSupported, openGameCenterLeaderboard, submitGameCenterLeaderBoardScore} from '@apps-in-toss/web-framework';
-import { getUserKeyForGame } from '@apps-in-toss/web-framework';
-import { Storage } from '@apps-in-toss/web-framework';
+import { useEffect, useState, useRef } from 'react';
+import { 
+  isMinVersionSupported, 
+  openGameCenterLeaderboard, 
+  submitGameCenterLeaderBoardScore,
+  getUserKeyForGame,
+  GoogleAdMob,
+  Storage
+} from '@apps-in-toss/web-framework';
 
 const UNITY_BUILD_PATH = '/unity/Build';
 const GAME_NAME = '빌드 했을때 이름'; // 빌드 했을때 빌드본 이름
@@ -11,6 +16,7 @@ const UNITY_SETTINGS = {
   productName: '', // 게임이름
   productVersion: '1.0.0',
 };
+
 
 // 전역 선언
 declare global {
@@ -23,14 +29,23 @@ declare global {
     TossStorageSetItem?: (key:string,value:string) => Promise<void>;
     TossStorageRemoveItem?: (key:string) => Promise<void>;
     TossStorageAllClearItem?: () => Promise<void>;
+    TossLoadAD?: (adGroupID:string, callback: (event: any) => void) => void;
+    TossShowAD?: (adGroupID:string, callback: (event: any) => void) => void;
   }
 }
 
+// 콜백 전역 선언
+let currentLoadAdCallback: ((event: any) => void) | null = null;
+let currentShowAdCallback: ((event: any) => void) | null = null;
+// loadAd 리스너 해제용 cleanup 함수
+let loadAdCleanup: (() => void) | null = null;
+
 const UnityCanvas = () => {
+
   const isMounted = useRef(false);
   // 로딩 진행 상태
   const [loadingProgress, setLoadingProgress] = useState(0);
-  
+
   useEffect(() => {
     // 중복 마운트 방지
     if (isMounted.current) return;
@@ -108,7 +123,7 @@ const UnityCanvas = () => {
       }
     }
 
-      // 모든 저장 정보 삭제
+    // 모든 저장 정보 삭제
     window.TossStorageAllClearItem = async () => {
       try {
         const result = await Storage.clearItems();
@@ -118,7 +133,75 @@ const UnityCanvas = () => {
         throw error;
       }
     }
-     // Unity 로더 스크립트 로드 후 createUnityInstance 실행
+
+
+    // 인앱 광고 로드
+    window.TossLoadAD = (adGroupID: string, callback: (event: any) => void) => {
+      // 콜백 등록
+      currentLoadAdCallback = callback;
+
+      // 이전에 등록된 리스너 있으면 정리
+      if (loadAdCleanup) {
+        try {
+          loadAdCleanup();
+        } catch (e) {
+          console.warn('이전 loadAd cleanup 중 오류:', e);
+        }
+        loadAdCleanup = null;
+      }
+      
+      if (GoogleAdMob.loadAppsInTossAdMob.isSupported() !== true) {
+        // 현재 실행 중인 앱(예: 토스 앱, 개발용 샌드박스 앱 등)에서 Google AdMob 광고 기능을 지원하는지 확인
+        callback({ type: 'error', message: 'AdMob Not Supported' });
+        return;
+      }
+      
+      loadAdCleanup = GoogleAdMob.loadAppsInTossAdMob({
+        options: { adGroupId: adGroupID },
+        onEvent: (event) => {
+          console.log(event.type);
+          if (currentLoadAdCallback) {
+            // 성공
+            currentLoadAdCallback(event);
+          }
+        },
+        onError: (error) => {
+          if (currentLoadAdCallback) {
+            // 실패
+            currentLoadAdCallback({ type: 'error', message: error.toString() });
+          }
+        },
+      });
+    };
+
+    // 인앱 광고 표기
+    window.TossShowAD = (adGroupID: string, callback: (event: any) => void) => {
+      // 콜백 등록
+      currentShowAdCallback = callback;
+      
+      if (GoogleAdMob.showAppsInTossAdMob.isSupported() !== true) {
+        // 현재 실행 중인 앱(예: 토스 앱, 개발용 샌드박스 앱 등)에서 Google AdMob 광고 기능을 지원하는지 확인
+        callback({ type: 'error', message: 'AdMob Not Supported' });
+        return;
+      }
+      
+      GoogleAdMob.showAppsInTossAdMob({
+        options: { adGroupId: adGroupID },
+        onEvent: (event) => {
+          if (currentShowAdCallback) {
+            currentShowAdCallback(event);
+          }
+        },
+        onError: (error) => {
+          if (currentShowAdCallback) {
+            // 실패
+            currentShowAdCallback({ type: 'error', message: error.toString() });
+          }
+        },
+      });
+    };
+
+    // Unity 로더 스크립트 로드 후 createUnityInstance 실행
     const script = document.createElement('script');
     script.src = `${UNITY_BUILD_PATH}/${GAME_NAME}.loader.js`;
     script.onload = () => {
@@ -138,7 +221,6 @@ const UnityCanvas = () => {
         ...UNITY_SETTINGS,
       };
 
-      
       window
         .createUnityInstance(
           canvas,
@@ -159,6 +241,16 @@ const UnityCanvas = () => {
     document.body.appendChild(script);
 
     return () => {
+      // 이전에 등록된 리스너 있으면 정리
+      if (loadAdCleanup) {
+        try {
+          loadAdCleanup();
+        } catch (e) {
+          console.warn('이전 loadAd cleanup 중 오류:', e);
+        }
+        loadAdCleanup = null;
+      }
+
       // 전역 Toss 함수 초기화
       delete window.TossOpenGameCenterLeaderboard;
       delete window.TossSubmitGameCenterLeaderBoardScore;
@@ -166,6 +258,8 @@ const UnityCanvas = () => {
       delete window.TossStorageSetItem;
       delete window.TossStorageRemoveItem;
       delete window.TossStorageAllClearItem;
+      delete window.TossLoadAD;
+      delete window.TossShowAD;
 
       window.TossGetUserKeyForGame = undefined;
       document.body.removeChild(script);
