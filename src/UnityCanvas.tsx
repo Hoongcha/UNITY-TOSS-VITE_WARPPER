@@ -47,10 +47,6 @@ const UnityCanvas = () => {
   const [loadingProgress, setLoadingProgress] = useState(0);
 
   useEffect(() => {
-    // 중복 마운트 방지
-    if (isMounted.current) return;
-    isMounted.current = true;
-
     // 로그인 혹은 키값 얻기
     window.TossGetUserKeyForGame = async () => {
       try {
@@ -201,69 +197,76 @@ const UnityCanvas = () => {
       });
     };
 
-    // Unity 로더 스크립트 로드 후 createUnityInstance 실행
-    const script = document.createElement('script');
-    script.src = `${UNITY_BUILD_PATH}/${GAME_NAME}.loader.js`;
-    script.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.id = 'unity-canvas';
-      canvas.style.width = '100%';
-      canvas.style.height = '100%';
-      const container = document.getElementById('unity-container');
-      if (!container) return;
-      container.appendChild(canvas);
 
-      const unityConfig = {
-        dataUrl: `${UNITY_BUILD_PATH}/${GAME_NAME}.data`,
-        frameworkUrl: `${UNITY_BUILD_PATH}/${GAME_NAME}.framework.js`,
-        codeUrl: `${UNITY_BUILD_PATH}/${GAME_NAME}.wasm`,
-        streamingAssetsUrl: '/unity/StreamingAssets',
-        ...UNITY_SETTINGS,
+    // 중복 마운트 방지
+    // Unity 인스턴스는 한 번만 실행
+    if (!isMounted.current) {
+
+      isMounted.current = true;
+      // Unity 로더 스크립트 로드 후 createUnityInstance 실행
+      const script = document.createElement('script');
+      script.src = `${UNITY_BUILD_PATH}/${GAME_NAME}.loader.js`;
+      script.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.id = 'unity-canvas';
+        canvas.style.width = '100%';
+        canvas.style.height = '100%';
+        const container = document.getElementById('unity-container');
+        if (!container) return;
+        container.appendChild(canvas);
+
+        const unityConfig = {
+          dataUrl: `${UNITY_BUILD_PATH}/${GAME_NAME}.data`,
+          frameworkUrl: `${UNITY_BUILD_PATH}/${GAME_NAME}.framework.js`,
+          codeUrl: `${UNITY_BUILD_PATH}/${GAME_NAME}.wasm`,
+          streamingAssetsUrl: '/unity/StreamingAssets',
+          ...UNITY_SETTINGS,
+        };
+
+        window
+          .createUnityInstance(
+            canvas,
+            unityConfig,
+            (progress: number) => {
+              // progress: 0 ~ 1
+              setLoadingProgress(progress);
+            }
+          )
+          .then(() => {
+            console.log('Unity 인스턴스 생성 완료');
+            setLoadingProgress(1); // 100%로 마무리
+          })
+          .catch((err: any) => {
+            console.error('Unity 인스턴스 생성 실패:', err);
+          });
       };
+      document.body.appendChild(script);
 
-      window
-        .createUnityInstance(
-          canvas,
-          unityConfig,
-          (progress: number) => {
-            // progress: 0 ~ 1
-            setLoadingProgress(progress);
+      return () => {
+        // 이전에 등록된 리스너 있으면 정리
+        if (loadAdCleanup) {
+          try {
+            loadAdCleanup();
+          } catch (e) {
+            console.warn('이전 loadAd cleanup 중 오류:', e);
           }
-        )
-        .then(() => {
-          console.log('Unity 인스턴스 생성 완료');
-          setLoadingProgress(1); // 100%로 마무리
-        })
-        .catch((err: any) => {
-          console.error('Unity 인스턴스 생성 실패:', err);
-        });
-    };
-    document.body.appendChild(script);
-
-    return () => {
-      // 이전에 등록된 리스너 있으면 정리
-      if (loadAdCleanup) {
-        try {
-          loadAdCleanup();
-        } catch (e) {
-          console.warn('이전 loadAd cleanup 중 오류:', e);
+          loadAdCleanup = null;
         }
-        loadAdCleanup = null;
-      }
 
-      // 전역 Toss 함수 초기화
-      delete window.TossOpenGameCenterLeaderboard;
-      delete window.TossSubmitGameCenterLeaderBoardScore;
-      delete window.TossStorageGetItem;
-      delete window.TossStorageSetItem;
-      delete window.TossStorageRemoveItem;
-      delete window.TossStorageAllClearItem;
-      delete window.TossLoadAD;
-      delete window.TossShowAD;
+        // 전역 Toss 함수 초기화
+        delete window.TossOpenGameCenterLeaderboard;
+        delete window.TossSubmitGameCenterLeaderBoardScore;
+        delete window.TossStorageGetItem;
+        delete window.TossStorageSetItem;
+        delete window.TossStorageRemoveItem;
+        delete window.TossStorageAllClearItem;
+        delete window.TossLoadAD;
+        delete window.TossShowAD;
 
-      window.TossGetUserKeyForGame = undefined;
-      document.body.removeChild(script);
-    };
+        window.TossGetUserKeyForGame = undefined;
+        document.body.removeChild(script);
+      };
+    }
   }, []);
 
   return (
